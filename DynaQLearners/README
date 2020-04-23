@@ -1,0 +1,17 @@
+Nolan Gutierrez
+CSE 6369 - Reinforcement Learning Homework 2- Spring 2020 Due Date: Apr. 21 2020
+
+To run this project you will need: 
+Python 3.7.6
+matplotlib
+
+Obtaining results:
+1c)
+python  GridAgent.py --ndirect 100000 --epsilon 0.01 --learner 1 --nlearners 3 --epsilonStrat 2 --nplanning 3 --maxNumExp 500
+2b) 
+python  GridAgent.py --ndirect 100000 --epsilon 0.01 --learner 2 --nlearners 3 --epsilonStrat 1 --epsilonFactor 500 --nplanning 3 --alpha 0.1 --theta 0.1
+2c) 
+python  GridAgent.py --ndirect 100000 --epsilon 0.01 --learner 3 --nlearners 3 --epsilonStrat 2 --nplanning 3 --maxNumExp 500
+ 
+Each of these commands will run three models to produce 9 results
+and three graphs total.
