@@ -5,6 +5,9 @@ from Debugger import Debugger
 e,d = exec, Debugger()
 e(d.gIS())
 d.sDS(False)
+class Replaytypes:
+    NormalReplay = 1 # combined experience replay
+    CER = 2 # Combined experience replay
 class DQN:
     def __init__(self,
                 session,
@@ -13,18 +16,20 @@ class DQN:
                 numObservations = 5,
                 optimizer = 'adam',
                 lr = 1e-4,
-                checkPointPath = './checkpoints/',
+                checkPointPath = 'checkpoints/',
                 loadOldModel = True,
                 activation = 'relu',
                 numActions = 10,
                 gamma = .95,
-                maxExp = 100000,
+                maxExp = 200000,
                 scopeQ = 'Q',
                 scopeTarget = 'Target-Q',
-                cUpdate = 8000,
+                cUpdate = 10000,
                 resetModel = False,
+                saveTime = 10000
                 ):
         self.obs_size = img_size + (numObservations,)
+        self.saveTime = saveTime
         self.resetModel = resetModel
         self.cUpdate = cUpdate
         self.session = session
@@ -36,7 +41,6 @@ class DQN:
         self.optimizer = optimizer
         self.lr = lr
         self.numActions = numActions
-        self.loadCheckPoint()
         self.step = 0
         self.act = None
         self.opt = None
@@ -54,14 +58,26 @@ class DQN:
         self.targQValue = self.build_DQN(self.targObs,scopeTarget)
         self.QValue = self.build_DQN(self.obs, scopeQ)
         self.saver = tf.compat.v1.train.Saver()
+        self.loadCheckPoint()
         self.setLoss()
         self.session.run(tf.compat.v1.initialize_all_variables())
 
     def loadCheckPoint(self):
-        checkpoint = tf.compat.v1.train.get_checkpoint_state("saved_dqn")
-        if checkpoint and  loadOldModel and not self.resetModel: 
-            self.saver.restore(self.session, checkpoint.model_checkpoint_path)
-            print("Model Loaded")
+        checkpoint = tf.compat.v1.train.get_checkpoint_state("checkpoints")
+        
+        e(g('type(checkpoint)'))
+        success = True
+        if checkpoint and checkpoint.model_checkpoint_path and not self.resetModel: 
+            e(g('checkpoint.model_checkpoint_path'))
+            e(g('dir(checkpoint)'))
+            try:self.saver.restore(self.session,checkpoint.model_checkpoint_path)
+            except: 
+                success = False
+                print("path not valid")
+            finally: 
+                if not success: print("Model Not Loaded")
+                if success: print("Model Loaded")
+                
         else: print("Could not find Weights")
     def setLoss(self):
         self.actionChosen = tf.compat.v1.placeholder("float", (None,) + (self.numActions,))
@@ -116,12 +132,16 @@ class DQN:
 
     def updateTargetNetwork(self, timeStep):
         if timeStep % self.cUpdate == 0:
+            print("updating target network")
             Q_params = self.getParamsFromScope(self.scopeQ)
             Targ_params = self.getParamsFromScope(self.scopeTarget)
             fList = self.assignParams(Q_params,Targ_params)
             self.session.run(fList)
+
     def save(self,timeStep):
-        if timeStep % 10000 == 0: self.saver.save(self.session,self.checkPointPath)
+        if timeStep % self.saveTime == 0:
+            print("model saved")
+            self.saver.save(self.session,self.checkPointPath + 'saved_dqn', global_step = timeStep)
     def getListsFromTupleList(self,TupleList):
         Lists = ()
         e(g('len(TupleList)'))
@@ -133,14 +153,21 @@ class DQN:
         e(g('len(Lists)'))
         
         return Lists        
-    def trainOnExperience(self, batch, timeStep):
-        states,actions,rewards,nextStates,terminals = self.getListsFromTupleList(batch)
-        e(g('actions'))
+    def getBatch(self, batch, recentExp, expType):
+        if expType == Replaytypes.NormalReplay: 
+            return self.getListsFromTupleList(batch)
+        elif expType == Replaytypes.CER:
+            batch[-1] = recentExp
+            return self.getListsFromTupleList(batch)
+    def trainOnExperience(self, batch, timeStep,recentExp, expType = 1):
+        if timeStep > 200000:
+            states,actions,rewards,nextStates,terminals = self.getBatch(batch,recentExp,expType)
 
-        QvalueTargs = self.targQValue.eval(feed_dict = {self.targObs : nextStates})
-        yTarg = [rewards[i] if terminals[i] else rewards[i] + self.gamma * np.max(QvalueTargs[i]) for i in range(len(batch))]
-        self.train_op.run(feed_dict = {self.y : yTarg,self.actionChosen : actions,self.obs : states,})
-        self.save(timeStep)
-        self.updateTargetNetwork(timeStep)
+            QvalueTargs = self.targQValue.eval(feed_dict = {self.targObs : nextStates})
+            yTarg = [rewards[i] if terminals[i] else rewards[i] + self.gamma * np.max(QvalueTargs[i]) for i in range(len(batch))]
+            self.train_op.run(feed_dict = {self.y : yTarg,self.actionChosen : actions,self.obs : states,})
+            self.save(timeStep)
+            self.updateTargetNetwork(timeStep)
+                
         
 
