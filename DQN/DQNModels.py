@@ -26,14 +26,16 @@ class DQN:
                 scopeTarget = 'Target-Q',
                 cUpdate = 10000,
                 resetModel = False,
-                saveTime = 10000
+                saveTime = 10000,
+                timeToStart = 2000,
                 ):
         self.obs_size = img_size + (numObservations,)
+        self.timeToStart = timeToStart
         self.saveTime = saveTime
         self.resetModel = resetModel
         self.cUpdate = cUpdate
         self.session = session
-        self.gamma = .95
+        self.gamma = gamma
         self.maxExp = maxExp
         self.experience = deque()        
         self.checkPointPath = checkPointPath
@@ -65,12 +67,12 @@ class DQN:
     def loadCheckPoint(self):
         checkpoint = tf.compat.v1.train.get_checkpoint_state("checkpoints")
         
-        e(g('type(checkpoint)'))
         success = True
         if checkpoint and checkpoint.model_checkpoint_path and not self.resetModel: 
-            e(g('checkpoint.model_checkpoint_path'))
-            e(g('dir(checkpoint)'))
-            try:self.saver.restore(self.session,checkpoint.model_checkpoint_path)
+            try:
+                self.saver.restore(self.session,checkpoint.model_checkpoint_path)
+                print("weights restored")
+                
             except: 
                 success = False
                 print("path not valid")
@@ -144,13 +146,9 @@ class DQN:
             self.saver.save(self.session,self.checkPointPath + 'saved_dqn', global_step = timeStep)
     def getListsFromTupleList(self,TupleList):
         Lists = ()
-        e(g('len(TupleList)'))
-        e(g('type(TupleList)'))
-        e(g('len(TupleList[0])'))
         for i in range(len(TupleList[0])):
             myList = [element[i] for element in TupleList]
             Lists += (myList,)
-        e(g('len(Lists)'))
         
         return Lists        
     def getBatch(self, batch, recentExp, expType):
@@ -160,7 +158,7 @@ class DQN:
             batch[-1] = recentExp
             return self.getListsFromTupleList(batch)
     def trainOnExperience(self, batch, timeStep,recentExp, expType = 1):
-        if timeStep > 200000:
+        if timeStep > self.timeToStart:
             states,actions,rewards,nextStates,terminals = self.getBatch(batch,recentExp,expType)
 
             QvalueTargs = self.targQValue.eval(feed_dict = {self.targObs : nextStates})

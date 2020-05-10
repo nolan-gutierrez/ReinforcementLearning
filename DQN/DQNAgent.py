@@ -1,7 +1,9 @@
 
 from PIL import ImageOps,Image
 from collections import deque
+import pickle
 from Debugger import Debugger
+from random import sample
 from numpy import random
 from Counter import Counter
 from DQNModels import DQN
@@ -26,7 +28,7 @@ parser.add_argument('--visual',type = bool, default = False)
 parser.add_argument('--nEpisodes',type = int, default = 300)
 parser.add_argument('--nplanning', type = int, default = 10)
 parser.add_argument('--greedy', type = bool, default = False)
-parser.add_argument('--epsilonStrat',type = int, default = 4)
+parser.add_argument('--epsilonStrat',type = int, default = 5)
 parser.add_argument('--learner', type = int, default =1)
 parser.add_argument('--showTrial', type = bool, default = True)
 parser.add_argument('--randomReset',type =  bool, default = False)
@@ -34,13 +36,20 @@ parser.add_argument('--theta', type = float, default = .01)
 parser.add_argument('--ntrajectories',type = int, default = 1)
 parser.add_argument('--nlearners',type = int, default = 1)
 parser.add_argument('--epsilonFactor',type = int, default = 500)
-parser.add_argument('--maxNumExp',type = int, default = 1000000)
-parser.add_argument('--batch_size',type = int, default = 64)
-parser.add_argument('--env_id',nargs = '?', default = 'Pong-v0', help = 'Select the environment to run')
-parser.add_argument('--obs_scale',type = float, default = 0.525)
+parser.add_argument('--maxNumExp',type = int, default = 400000)
+parser.add_argument('--batch_size',type = int, default = 32)
+parser.add_argument('--env_id',nargs = '?', default = 'PongNoFrameskip-v4', help = 'Select the environment to run')
+parser.add_argument('--obs_scale',type = float, default = 0.2625)
 parser.add_argument('--resetModel', type = bool, default = False)
 parser.add_argument('--nObservations', type = int, default = 4)
-parser.add_argument('--replayType', type = int, default = 2)
+parser.add_argument('--replayType', type = int, default = 1)
+parser.add_argument('--expBool', type = bool, default = False)
+parser.add_argument('--timeToStart', type = int ,default = 1000)
+parser.add_argument('--cUpdate', type = int, default = 10000)
+parser.add_argument('--saveTime', type = int , default = 10000)
+parser.add_argument('--timeToSaveExp', type = int, default = 50000)
+parser.add_argument('--resetExp', type = bool, default = False)
+
 
 args = parser.parse_args()
 class Agent:
@@ -67,6 +76,12 @@ class Agent:
             resetModel = False,
             ob_size = (210,160),
             replayType = 2,
+            expBool = True,
+            timeToStart = 2000,
+            cUpdate = 10000,
+            saveTime = 10000,
+            timeToSaveExp = 20000,
+            resetExp = False,
             
             ):
 
@@ -77,8 +92,14 @@ class Agent:
         gamma: discount favtor
         """
         self.env = env
+        self.timeToSaveExp = timeToSaveExp
+        self.cUpdate = cUpdate
+        self.timeToStart = timeToStart
+        self.saveTime = saveTime
         self.nEpisodes = nEpisodes
-        self.replayType = 2
+        self.resetExp = resetExp
+        self.replayType = replayType
+        self.expBool = expBool
         self.resetModel = resetModel
         self.obs_scale = obs_scale
         self.ob_size = self.getOb_size()
@@ -116,25 +137,21 @@ class Agent:
     def loadExp(self):
         try:
             with open('mylist','rb') as f: 
-                self.exp = pickle.load(f)
+                self.experience = pickle.load(f)
         except: print("file not found")
         
     def saveExp(self): 
         print("experience saved")
         with open('mylist','wb') as f:
-            pickle.dump(self.exp,f)
+            pickle.dump(self.experience,f)
 
     def initQValues(self):
         """
         Output: initializes both model and Q values for all states provided by GridWorld
         """
-        self.Qvalues = DQN(self.session,gamma = self.gamma, numActions = self.numActions, img_size = self.ob_size, numObservations = self.nObservations)
+        self.Qvalues = DQN(self.session,gamma = self.gamma, numActions = self.numActions, img_size = self.ob_size, numObservations = self.nObservations,timeToStart = self.timeToStart, cUpdate = self.cUpdate, saveTime = self.saveTime)
     def InitState(self,obs):
-        e(g('type(obs)'))
-        e(g('obs.shape'))
-        e(g('self.nObservations'))
         self.currentState = np.stack([obs for i in range(self.nObservations)], axis = 2)
-        e(g('self.currentState.shape'))
     def getBestAction(self,pose):
         """
         Pose: (x,y,orientation) tuple representing a pose in grid world
@@ -157,8 +174,12 @@ class Agent:
         elif self.epsilonStrat == 3:
             if self.epsilon > .0001:
                 self.epsilon -= .0001
-        elif self.epsilonStrat == 4: 
+        elif self.epsilonStrat == 4 or 5: 
+            if self.epsilonStrat == 5:
+                if self.timeStep > self.timeToStart:
+                    self.epsilonStrat = 4
             return  random.choice([i for i in range(self.numActions)])
+        
 
         if self.greedy: 
             bestAction = self.getBestAction(pose)
@@ -176,15 +197,13 @@ class Agent:
             e(g('action'))
             return action
     def getNewState(self,observation):
-        e(g('self.currentState.shape'))
-        e(g('self.nObservations'))
         observation = np.reshape(observation, observation.shape + (1,))
         return np.append(observation, self.currentState[:,:,1:], axis = 2)
     def oneHotActions(self,action):
         actionArray = np.zeros(self.numActions)
         actionArray[action] = 1
         return actionArray
-    def updateExp(self,currentState,action, reward,observation, terminal):
+    def updateExp(self,currentState,action, reward,observation, terminal,expBool):
         newState = self.getNewState(observation)
         action = self.oneHotActions(action)
         self.experience.append((currentState,action,reward,newState,terminal))
@@ -192,7 +211,6 @@ class Agent:
                 self.experience.popleft()
         recentExp = (currentState, action, reward, newState, terminal)
         self.currentState = newState 
-        self.timeStep += 1
         return recentExp
     def getGrayScale(self,image):
         imPil = Image.fromarray(image)
@@ -201,17 +219,21 @@ class Agent:
     def preprocess(self,image, scale = 0.525, grayScale = True,binaryThresh = True):
         #imPil = Image.fromarray(image)
         img = image
-        img = np.reshape(img,(210,160,3))
+        img = np.reshape(img,(210,160,3)).astype(np.uint8)
         if grayScale:
 
             img = img[:, :, 0] * 0.299 + img[:, :, 1] * 0.587 + img[:, :, 2] * 0.114
             #imPil = ImageOps.grayscale(imPil)
+        img = cv2.adaptiveThreshold(img.astype(np.uint8),255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
+        
         if scale != 1:
-            imPil = Image.fromarray(img)
-            imPil  = imPil.resize((int(imPil.width * scale),int( imPil.height * scale)), Image.BILINEAR)
-        imArray = np.asarray(imPil)
+            img = Image.fromarray(img)
+            img  = img.resize((int(img.width * scale),int( img.height * scale)), Image.BILINEAR)
+            img = np.asarray(img)
+
+        imArray = np.asarray(img)
         #if binaryThresh: _,imArray = cv2.threshold(imArray, 1, 255, cv2.THRESH_BINARY_INV)
-        imArray = imArray[18:102,:]
+        imArray = imArray[9:51,:]
         return imArray.astype(np.uint8)
     def getBatch(self):
         return self.sampleN(self.experience, self.batch_size)
@@ -219,7 +241,7 @@ class Agent:
         im = Image.fromarray(image)
         im.show()
     def trainOnEnvironment(self):
-        self.loadExp()
+        if not self.resetExp:self.loadExp()
         for i in range(self.nEpisodes):
             
             ob = self.env.reset()
@@ -227,6 +249,7 @@ class Agent:
             if i %5 == 0: 
                 print("timeStep: ",self.timeStep)
                 print("episode: ",i)
+                print("len(self.experience):", len(self.experience))
                 #self.showImageArray(ob)
                 self.env.render()
             self.InitState(ob)
@@ -236,12 +259,18 @@ class Agent:
                 A = self.getAction(S)
                 ob, reward, done ,_ = self.env.step(A)
                 self.rewards.append(reward)
-                ob = self.preprocess(ob, scale = self.obs_scale)
-                recentExp = self.updateExp(S,A,reward,ob,done)
+                recentExp = None
+                if self.expBool:
+                    ob = self.preprocess(ob, scale = self.obs_scale)
+
+                    recentExp = self.updateExp(S,A,reward,ob,done,self.expBool)
                 batch = self.getBatch()
                 self.Qvalues.trainOnExperience(batch,self.timeStep, recentExp, self.replayType)
-                if self.timeStep == 50000:
-                    self.saveExp()
+                if self.timeStep % self.timeToSaveExp ==0 :
+                    if len(self.experience )<self.maxNumExp:
+                        self.saveExp()
+                self.timeStep+=1
+
                 if done:
                     averageReward = np.sum(self.rewards)
                     self.episodeRewards.append(averageReward)
@@ -285,6 +314,12 @@ def main():
                 ob_size = ob_size,
                 nObservations = args.nObservations,              
                 replayType = args.replayType,
+                expBool = args.expBool,
+                timeToStart = args.timeToStart,
+                cUpdate = args.cUpdate,
+                saveTime = args.saveTime,
+                timeToSaveExp = args.timeToSaveExp,
+                resetExp = args.resetExp
                 )
         agent.trainOnEnvironment()
         env.close()
