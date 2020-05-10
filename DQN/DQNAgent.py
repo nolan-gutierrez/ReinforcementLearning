@@ -23,7 +23,7 @@ d.sDS(False)
 parser = argparse.ArgumentParser()
 parser.add_argument('--epsilon', type = float, default = 0.05)
 parser.add_argument('--alpha', type = float, default = 0.1)
-parser.add_argument('--gamma',type = float, default = 0.95)
+parser.add_argument('--gamma',type = float, default = 0.99)
 parser.add_argument('--visual',type = bool, default = False)
 parser.add_argument('--nEpisodes',type = int, default = 300)
 parser.add_argument('--nplanning', type = int, default = 10)
@@ -38,17 +38,18 @@ parser.add_argument('--nlearners',type = int, default = 1)
 parser.add_argument('--epsilonFactor',type = int, default = 500)
 parser.add_argument('--maxNumExp',type = int, default = 400000)
 parser.add_argument('--batch_size',type = int, default = 32)
-parser.add_argument('--env_id',nargs = '?', default = 'PongNoFrameskip-v4', help = 'Select the environment to run')
+parser.add_argument('--env_id',nargs = '?', default = 'PongDeterministic-v4', help = 'Select the environment to run')
 parser.add_argument('--obs_scale',type = float, default = 0.2625)
 parser.add_argument('--resetModel', type = bool, default = False)
 parser.add_argument('--nObservations', type = int, default = 4)
 parser.add_argument('--replayType', type = int, default = 1)
-parser.add_argument('--expBool', type = bool, default = False)
-parser.add_argument('--timeToStart', type = int ,default = 1000)
+parser.add_argument('--expBool', type = bool, default = True)
+parser.add_argument('--timeToStart', type = int ,default = 200000)
 parser.add_argument('--cUpdate', type = int, default = 10000)
-parser.add_argument('--saveTime', type = int , default = 10000)
-parser.add_argument('--timeToSaveExp', type = int, default = 50000)
+parser.add_argument('--saveTime', type = int , default = 30000)
+parser.add_argument('--timeToSaveExp', type = int, default = 40000)
 parser.add_argument('--resetExp', type = bool, default = False)
+parser.add_argument('--trainUpdate', type = int, default = 4)
 
 
 args = parser.parse_args()
@@ -82,6 +83,7 @@ class Agent:
             saveTime = 10000,
             timeToSaveExp = 20000,
             resetExp = False,
+            trainUpdate = 4,
             
             ):
 
@@ -92,6 +94,7 @@ class Agent:
         gamma: discount favtor
         """
         self.env = env
+        self.trainUpdate = trainUpdate
         self.timeToSaveExp = timeToSaveExp
         self.cUpdate = cUpdate
         self.timeToStart = timeToStart
@@ -122,7 +125,7 @@ class Agent:
         self.exp = []
         self.timeStep = 0
         self.action_space = action_space
-        self.numActions =action_space.n
+        self.numActions =4
         self.maxNumExp = maxNumExp
         self.episodeRewards = []
         self.rewards = []
@@ -177,7 +180,7 @@ class Agent:
         elif self.epsilonStrat == 4 or 5: 
             if self.epsilonStrat == 5:
                 if self.timeStep > self.timeToStart:
-                    self.epsilonStrat = 4
+                    self.epsilonStrat = 1
             return  random.choice([i for i in range(self.numActions)])
         
 
@@ -240,6 +243,12 @@ class Agent:
     def showImageArray(self,image):
         im = Image.fromarray(image)
         im.show()
+    def clip_reward(self,reward):
+        if reward > 0: 
+            return 1
+        elif reward == 0: 
+            return 0
+        else: return -1
     def trainOnEnvironment(self):
         if not self.resetExp:self.loadExp()
         for i in range(self.nEpisodes):
@@ -258,17 +267,21 @@ class Agent:
                 S = self.currentState
                 A = self.getAction(S)
                 ob, reward, done ,_ = self.env.step(A)
+                reward = self.clip_reward(reward)
                 self.rewards.append(reward)
+
                 recentExp = None
                 if self.expBool:
                     ob = self.preprocess(ob, scale = self.obs_scale)
 
                     recentExp = self.updateExp(S,A,reward,ob,done,self.expBool)
                 batch = self.getBatch()
-                self.Qvalues.trainOnExperience(batch,self.timeStep, recentExp, self.replayType)
+                if self.timeStep % self.trainUpdate == 0:
+                    self.Qvalues.trainOnExperience(batch,self.timeStep, recentExp, self.replayType)
                 if self.timeStep % self.timeToSaveExp ==0 :
                     if len(self.experience )<self.maxNumExp:
-                        self.saveExp()
+                        if self.timeStep is not 0:
+                            self.saveExp()
                 self.timeStep+=1
 
                 if done:
@@ -319,7 +332,8 @@ def main():
                 cUpdate = args.cUpdate,
                 saveTime = args.saveTime,
                 timeToSaveExp = args.timeToSaveExp,
-                resetExp = args.resetExp
+                resetExp = args.resetExp,
+                trainUpdate = args.trainUpdate,
                 )
         agent.trainOnEnvironment()
         env.close()

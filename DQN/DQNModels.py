@@ -92,7 +92,7 @@ class DQN:
         elif self.activation == 'elu': self.act = tf.nn.elu
     def setOptimizer(self):
         if self.optimizer == 'adam': 
-            self.opt = tf.compat.v1.train.AdamOptimizer(learning_rate = 1e-4,beta1 = .9, beta2 = .999, epsilon = 1e-8,)
+            self.opt = tf.compat.v1.train.AdamOptimizer(learning_rate = .00025,beta1 = .9, beta2 = .999, epsilon = 1e-8,)
         elif self.optimizer == 'sgd':
             self.opt = tf.keras.optimizeres.SGD
         else:
