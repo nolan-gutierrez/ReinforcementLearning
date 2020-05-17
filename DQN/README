@@ -1,1 +1,30 @@
-Before executing on windows, please enter command set DISPLAY=:0
+Nolan Gutierrez
+05/15/2020
+Final Reinforcement Learning project
+Playing Pong with DQN and Combined Experience Replay
+The agent was trained on an intel 8700k cpu with a P4000 GPU with 32 GB RAM. 
+The agent took only three hours to reach its level of performance.  In order 
+to use the agent, it is recommended to install Anaconda 3 on Ubuntu 16.04 although 
+any Ubuntu version should work. The deep learning API used was tensorflow v2, 
+and the required libraries are gym, matplotlib, pillow, opencv, ffmpeg, and 
+pybullet-gym. The anaconda environment should be made as follows:
+
+conda create -y -n gym2 pip python=3.7
+conda activate gym2
+conda install -y tensorflow matplotlib
+conda install -c conda-forge opencv
+pip install pillow ffmpeg gym
+pip install gym[all] 
+pip install gym[atari]
+To install pybulletgym: 
+git clone https://github.com/benelot/pybullet-gym.git
+cd pybullet-gym
+pip install -e .
+
+If you want to run the agent with a pretrained model, use the following:
+python DQNAgent.py --visual True --testPhase True --timeToStart 0 --epsilon 0 --checkpointName checkpoints/saved_dqn-1830000
+
+If you want to run the agent with the default parameters, then simply run:
+python DQNAgent.py
+
+You may examine the parameters in DQNAgent.py to adjust the model.

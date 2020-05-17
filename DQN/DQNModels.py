@@ -118,11 +118,17 @@ class DQN:
             x = x / 255
             
             convLayer1 = self.act(conv2D(x, filters = 32, stride = [4,4], kernel_size = 8, name = 'convLayer1')) 
+            e(g('convLayer1.shape'))
             maxPoolLayer = tf.nn.max_pool(convLayer1, ksize = [2,2], strides = [1,2,2,1],padding = 'SAME', name = 'maxPoolLayer')
+            e(g('maxPoolLayer.shape'))
             convLayer2 = self.act(conv2D(convLayer1,filters = 64, stride = [2,2], kernel_size = 4,name = 'convLayer2'))
+            e(g('convLayer2.shape'))
             convLayer3 = self.act(conv2D(convLayer2, filters = 64, stride = [1,1], kernel_size = 3, name = 'convLayer3'))
+            e(g('convLayer3.shape'))
             flatL3 = tf.compat.v1.layers.flatten(convLayer3, name = 'flatten')
+            e(g('flatL3.shape'))
             dense1 = self.act(tf.compat.v1.layers.dense(flatL3,512, name = 'dense1'))
+            e(g('dense1.shape'))
             QValue = tf.compat.v1.layers.dense(dense1,self.numActions, name = 'QValue')
             return QValue
     def argmax(self, state):
