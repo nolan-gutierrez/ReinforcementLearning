@@ -1,4 +1,4 @@
-model_checkpoint_path: "saved_dqn-90000"
-all_model_checkpoint_paths: "saved_dqn-30000"
-all_model_checkpoint_paths: "saved_dqn-60000"
-all_model_checkpoint_paths: "saved_dqn-90000"
+model_checkpoint_path: "saved_dqn-270000"
+all_model_checkpoint_paths: "saved_dqn-210000"
+all_model_checkpoint_paths: "saved_dqn-240000"
+all_model_checkpoint_paths: "saved_dqn-270000"

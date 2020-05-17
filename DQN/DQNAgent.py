@@ -15,7 +15,7 @@ from collections import defaultdict
 import cv2
 import numpy as np
 from gym import wrappers, logger
-import pybulletgym
+#import pybulletgym
 import gym
 e,d = exec, Debugger()
 e(d.gIS())
@@ -25,7 +25,7 @@ parser.add_argument('--epsilon', type = float, default = 0.05)
 parser.add_argument('--alpha', type = float, default = 0.1)
 parser.add_argument('--gamma',type = float, default = 0.99)
 parser.add_argument('--visual',type = bool, default = False)
-parser.add_argument('--nEpisodes',type = int, default = 300)
+parser.add_argument('--nEpisodes',type = int, default = 600)
 parser.add_argument('--nplanning', type = int, default = 10)
 parser.add_argument('--greedy', type = bool, default = False)
 parser.add_argument('--epsilonStrat',type = int, default = 5)
@@ -36,20 +36,22 @@ parser.add_argument('--theta', type = float, default = .01)
 parser.add_argument('--ntrajectories',type = int, default = 1)
 parser.add_argument('--nlearners',type = int, default = 1)
 parser.add_argument('--epsilonFactor',type = int, default = 500)
-parser.add_argument('--maxNumExp',type = int, default = 400000)
+parser.add_argument('--maxNumExp',type = int, default = 300000)
 parser.add_argument('--batch_size',type = int, default = 32)
 parser.add_argument('--env_id',nargs = '?', default = 'PongDeterministic-v4', help = 'Select the environment to run')
-parser.add_argument('--obs_scale',type = float, default = 0.2625)
+parser.add_argument('--obs_scale',type = float, default = 0.525)
 parser.add_argument('--resetModel', type = bool, default = False)
 parser.add_argument('--nObservations', type = int, default = 4)
 parser.add_argument('--replayType', type = int, default = 1)
 parser.add_argument('--expBool', type = bool, default = True)
-parser.add_argument('--timeToStart', type = int ,default = 200000)
+parser.add_argument('--timeToStart', type = int ,default = 10000)
 parser.add_argument('--cUpdate', type = int, default = 10000)
 parser.add_argument('--saveTime', type = int , default = 30000)
-parser.add_argument('--timeToSaveExp', type = int, default = 40000)
+parser.add_argument('--timeToSaveExp', type = int, default = 50000)
 parser.add_argument('--resetExp', type = bool, default = False)
 parser.add_argument('--trainUpdate', type = int, default = 4)
+parser.add_argument('--testPhase', type = bool, default = False)
+parser.add_argument('--checkpointName', type = str, default = None)
 
 
 args = parser.parse_args()
@@ -84,6 +86,8 @@ class Agent:
             timeToSaveExp = 20000,
             resetExp = False,
             trainUpdate = 4,
+            testPhase = False,
+            checkpointName = None,
             
             ):
 
@@ -94,6 +98,8 @@ class Agent:
         gamma: discount favtor
         """
         self.env = env
+        self.checkpointName = checkpointName
+        self.testPhase = testPhase
         self.trainUpdate = trainUpdate
         self.timeToSaveExp = timeToSaveExp
         self.cUpdate = cUpdate
@@ -147,12 +153,16 @@ class Agent:
         print("experience saved")
         with open('mylist','wb') as f:
             pickle.dump(self.experience,f)
+    def saveRewards(self):
+        with open('rewards','wb') as f:
+            pickle.dump(self.episodeRewards,f)
 
     def initQValues(self):
         """
         Output: initializes both model and Q values for all states provided by GridWorld
         """
-        self.Qvalues = DQN(self.session,gamma = self.gamma, numActions = self.numActions, img_size = self.ob_size, numObservations = self.nObservations,timeToStart = self.timeToStart, cUpdate = self.cUpdate, saveTime = self.saveTime)
+        self.Qvalues = DQN(self.session,gamma = self.gamma, numActions = self.numActions, img_size = self.ob_size, numObservations = self.nObservations,timeToStart = self.timeToStart, cUpdate = self.cUpdate, saveTime = self.saveTime, checkpointName = self.checkpointName, resetModel = self.resetModel)
+
     def InitState(self,obs):
         self.currentState = np.stack([obs for i in range(self.nObservations)], axis = 2)
     def getBestAction(self,pose):
@@ -236,7 +246,7 @@ class Agent:
 
         imArray = np.asarray(img)
         #if binaryThresh: _,imArray = cv2.threshold(imArray, 1, 255, cv2.THRESH_BINARY_INV)
-        imArray = imArray[9:51,:]
+        imArray = imArray[18:102,:]
         return imArray.astype(np.uint8)
     def getBatch(self):
         return self.sampleN(self.experience, self.batch_size)
@@ -261,6 +271,10 @@ class Agent:
                 print("len(self.experience):", len(self.experience))
                 #self.showImageArray(ob)
                 self.env.render()
+                averageReward = np.sum(self.rewards)/5
+                self.episodeRewards.append(averageReward)
+                self.rewards = []
+                print("averageReward:, " , averageReward)
             self.InitState(ob)
             while True:
                 if self.visual: self.env.render()
@@ -275,9 +289,10 @@ class Agent:
                     ob = self.preprocess(ob, scale = self.obs_scale)
 
                     recentExp = self.updateExp(S,A,reward,ob,done,self.expBool)
-                batch = self.getBatch()
                 if self.timeStep % self.trainUpdate == 0:
-                    self.Qvalues.trainOnExperience(batch,self.timeStep, recentExp, self.replayType)
+                    if not self.testPhase:
+                        batch = self.getBatch()
+                        self.Qvalues.trainOnExperience(batch,self.timeStep, recentExp, self.replayType)
                 if self.timeStep % self.timeToSaveExp ==0 :
                     if len(self.experience )<self.maxNumExp:
                         if self.timeStep is not 0:
@@ -285,12 +300,9 @@ class Agent:
                 self.timeStep+=1
 
                 if done:
-                    averageReward = np.sum(self.rewards)
-                    self.episodeRewards.append(averageReward)
-                    self.rewards = []
-                    print("averageReward:, " , averageReward)
                     
                     break
+        self.saveRewards()  
             
            
 
@@ -334,6 +346,8 @@ def main():
                 timeToSaveExp = args.timeToSaveExp,
                 resetExp = args.resetExp,
                 trainUpdate = args.trainUpdate,
+                testPhase = args.testPhase,
+                checkpointName = args.checkpointName
                 )
         agent.trainOnEnvironment()
         env.close()

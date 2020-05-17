@@ -4,7 +4,7 @@ import numpy as np
 from Debugger import Debugger
 e,d = exec, Debugger()
 e(d.gIS())
-d.sDS(False)
+d.sDS(True)
 class Replaytypes:
     NormalReplay = 1 # combined experience replay
     CER = 2 # Combined experience replay
@@ -28,8 +28,10 @@ class DQN:
                 resetModel = False,
                 saveTime = 10000,
                 timeToStart = 2000,
+                checkpointName = None,
                 ):
         self.obs_size = img_size + (numObservations,)
+        self.checkpointName = checkpointName
         self.timeToStart = timeToStart
         self.saveTime = saveTime
         self.resetModel = resetModel
@@ -60,17 +62,22 @@ class DQN:
         self.targQValue = self.build_DQN(self.targObs,scopeTarget)
         self.QValue = self.build_DQN(self.obs, scopeQ)
         self.saver = tf.compat.v1.train.Saver()
-        self.loadCheckPoint()
         self.setLoss()
         self.session.run(tf.compat.v1.initialize_all_variables())
+        self.loadCheckPoint()
 
     def loadCheckPoint(self):
         checkpoint = tf.compat.v1.train.get_checkpoint_state("checkpoints")
         
         success = True
+        e(g('checkpoint.model_checkpoint_path'))
         if checkpoint and checkpoint.model_checkpoint_path and not self.resetModel: 
             try:
-                self.saver.restore(self.session,checkpoint.model_checkpoint_path)
+                if self.checkpointName is not None: 
+                    checkPath = self.checkpointName
+                else: checkPath = checkpoint.model_checkpoint_path
+                e(g('checkPath'))
+                self.saver.restore(self.session,checkPath)
                 print("weights restored")
                 
             except: 
@@ -108,6 +115,7 @@ class DQN:
     def build_DQN(self, x, scopeName):
         conv2D = self.conv2D
         with tf.compat.v1.variable_scope(scopeName): 
+            x = x / 255
             
             convLayer1 = self.act(conv2D(x, filters = 32, stride = [4,4], kernel_size = 8, name = 'convLayer1')) 
             maxPoolLayer = tf.nn.max_pool(convLayer1, ksize = [2,2], strides = [1,2,2,1],padding = 'SAME', name = 'maxPoolLayer')
