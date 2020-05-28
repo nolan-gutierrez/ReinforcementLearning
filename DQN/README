@@ -29,6 +29,3 @@ python DQNAgent.py
 
 You may examine the parameters in DQNAgent.py to adjust the model.
 
-1 2 3 4
-  2 3 4 5
-  
