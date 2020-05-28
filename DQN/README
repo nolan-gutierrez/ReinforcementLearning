@@ -22,9 +22,13 @@ cd pybullet-gym
 pip install -e .
 
 If you want to run the agent with a pretrained model, use the following:
-python DQNAgent.py --visual True --testPhase True --timeToStart 0 --epsilon 0 --checkpointName checkpoints/saved_dqn-1830000
+python DQNAgent.py --visual True --testPhase True --timeToStart 0 --epsilon 0 
 
 If you want to run the agent with the default parameters, then simply run:
 python DQNAgent.py
 
 You may examine the parameters in DQNAgent.py to adjust the model.
+
+1 2 3 4
+  2 3 4 5
+  

@@ -19,7 +19,6 @@ from gym import wrappers, logger
 import gym
 e,d = exec, Debugger()
 e(d.gIS())
-d.sDS(False)
 parser = argparse.ArgumentParser()
 parser.add_argument('--epsilon', type = float, default = 0.05)
 parser.add_argument('--alpha', type = float, default = 0.1)
@@ -47,14 +46,16 @@ parser.add_argument('--expBool', type = bool, default = True)
 parser.add_argument('--timeToStart', type = int ,default = 10000)
 parser.add_argument('--cUpdate', type = int, default = 10000)
 parser.add_argument('--saveTime', type = int , default = 30000)
-parser.add_argument('--timeToSaveExp', type = int, default = 50000)
+parser.add_argument('--timeToSaveExp', type = int, default = 10000000)
 parser.add_argument('--resetExp', type = bool, default = False)
 parser.add_argument('--trainUpdate', type = int, default = 4)
 parser.add_argument('--testPhase', type = bool, default = False)
 parser.add_argument('--checkpointName', type = str, default = None)
+parser.add_argument('--debug', type = bool, default = False)
 
 
 args = parser.parse_args()
+d.sDS(args.debug)
 class Agent:
     def __init__(self,
             session,
@@ -210,8 +211,12 @@ class Agent:
             e(g('action'))
             return action
     def getNewState(self,observation):
-        observation = np.reshape(observation, observation.shape + (1,))
-        return np.append(observation, self.currentState[:,:,1:], axis = 2)
+
+        newState = self.currentState.copy()
+        newState[:,:,:3] = newState[:,:,1:4]
+        newState[:,:,3] = observation
+        e(g('newState.shape'))
+        return newState
     def oneHotActions(self,action):
         actionArray = np.zeros(self.numActions)
         actionArray[action] = 1
