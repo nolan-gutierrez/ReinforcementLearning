@@ -1,6 +1,9 @@
 Nolan Gutierrez
 05/15/2020
-Final Reinforcement Learning project
+
+As you will see with this repository, this is one of the most simple implementations
+of DQN there is online. 
+
 Playing Pong with DQN and Combined Experience Replay
 The agent was trained on an intel 8700k cpu with a P4000 GPU with 32 GB RAM. 
 The agent took only three hours to reach its level of performance.  In order 
