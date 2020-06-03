@@ -1,6 +1,9 @@
 Nolan Gutierrez
 05/15/2020
-Final Reinforcement Learning project
+
+As you will see with this repository, this is one of the most simple implementations
+of DQN there is online. 
+
 Playing Pong with DQN and Combined Experience Replay
 The agent was trained on an intel 8700k cpu with a P4000 GPU with 32 GB RAM. 
 The agent took only three hours to reach its level of performance.  In order 
@@ -22,9 +25,10 @@ cd pybullet-gym
 pip install -e .
 
 If you want to run the agent with a pretrained model, use the following:
-python DQNAgent.py --visual True --testPhase True --timeToStart 0 --epsilon 0 --checkpointName checkpoints/saved_dqn-1830000
+python DQNAgent.py --visual True --testPhase True --timeToStart 0 --epsilon 0 
 
 If you want to run the agent with the default parameters, then simply run:
 python DQNAgent.py --resetModel True --resetExp True --timeToStart 100000
 
 You may examine the parameters in DQNAgent.py to adjust the model.
+

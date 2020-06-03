@@ -19,7 +19,6 @@ from gym import wrappers, logger
 import gym
 e,d = exec, Debugger()
 e(d.gIS())
-d.sDS(False)
 parser = argparse.ArgumentParser()
 parser.add_argument('--epsilon', type = float, default = 0.05)
 parser.add_argument('--alpha', type = float, default = 0.1)
@@ -47,14 +46,16 @@ parser.add_argument('--expBool', type = bool, default = True)
 parser.add_argument('--timeToStart', type = int ,default = 10000)
 parser.add_argument('--cUpdate', type = int, default = 10000)
 parser.add_argument('--saveTime', type = int , default = 30000)
-parser.add_argument('--timeToSaveExp', type = int, default = 50000)
+parser.add_argument('--timeToSaveExp', type = int, default = 10000000)
 parser.add_argument('--resetExp', type = bool, default = False)
 parser.add_argument('--trainUpdate', type = int, default = 4)
 parser.add_argument('--testPhase', type = bool, default = False)
 parser.add_argument('--checkpointName', type = str, default = None)
+parser.add_argument('--debug', type = bool, default = False)
 
 
 args = parser.parse_args()
+d.sDS(args.debug)
 class Agent:
     def __init__(self,
             session,
@@ -92,43 +93,10 @@ class Agent:
             ):
 
         """
-        Params:
-            - session: tensorflow session 
-            - batch_size: size of minibatch
-            - action_space: action space provided by the environment
-            - env: gym environment
-            - epsilon: proportion of time that random actions are taken
-            - greedy: Whether to use greedy exploration or not; boolean
-            - alpha: not used for gym
-            - gamma: discount factor
-            - visual: boolean, true if rendering environment
-            - goal: not used for gym
-            - agentPose: not used for gym
-            - showTrial: Whether to show the current trial. 
-            -randomReset: not used for gym
-            - epsilonStrat: choice between 1-5
-                - 1: epsilon greedy exploration
-                - 2: epsilong greedy exploration where epsilon decreases by formula epsilon = epsilonFactor/stepsize
-                - 3: linear decreasing epsilon strategy
-                - 4: random exploration
-                - 5: random exploration for duration timeToStart
-            -epsilonFactor: used for formula of epsilon greedy strategy 2
-            - nEpisodes: num episodes to train for
-            - nObservations: number of observations in history
-            -maxNumExp: max numbe of experiences in replay buffer
-            - obs_scale: factor to scale observations b y 
-            - replayType: 1 for normal experience replay, 2 for combined experience replay
-            - expBool : whether to collect experience
-            -timeToStart : time to start training. Also used for exploration strategy 5
-            - cUpdate: time between target network updates
-            - saveTime: steps betweens saving models. 
-            - timeToSaveExp: When to save Exp
-            - resetExp: If to not load old Experience 
-            - trainUpdate: How  many steps in between updating parameters
-            - testPhase: If to  train or not. 
-            - checkpointName: full path to name of checkpoint. directory of checkpoint should include checkpoint file.
-        output: stores all parameters, creates target and main q-value networks. 
-
+        gridWorld: GridWorld object
+        epsilon: value used for epsilon greedy search
+        alpha: step size
+        gamma: discount favtor
         """
         self.env = env
         self.checkpointName = checkpointName
@@ -172,34 +140,21 @@ class Agent:
 
         self.initQValues()
     def getOb_size(self):
-        """
-        output: Gets example observation from environment to determine scale for use in the DQN
-        """
         ob = self.env.reset()
         ob = self.preprocess(ob, self.obs_scale, True)
         size = ob.shape
         return size
     def loadExp(self):
-        """
-        output: loads replay buffer into self.experience
-        """
         try:
             with open('mylist','rb') as f: 
                 self.experience = pickle.load(f)
         except: print("file not found")
         
     def saveExp(self): 
-        """
-        output: saves experience in self.experience to mylist file
-        """
         print("experience saved")
         with open('mylist','wb') as f:
             pickle.dump(self.experience,f)
     def saveRewards(self):
-        """
-        output: saves list of rewards. Rewards can be directly passed to methods of Plotter object
-
-        """
         with open('rewards','wb') as f:
             pickle.dump(self.episodeRewards,f)
 
@@ -213,27 +168,15 @@ class Agent:
         self.currentState = np.stack([obs for i in range(self.nObservations)], axis = 2)
     def getBestAction(self,pose):
         """
-        Params: 
-            - returns optimal action of Qvalues using argmax
+        Pose: (x,y,orientation) tuple representing a pose in grid world
         returns: best action to take dependent on the current Q values
         """
         return self.Qvalues.argmax(self.currentState)
     def sample(self,mylist):
-        """
-        Params:
-            - mylist - list
-        returns: random element from mylist
-        """
         if len(mylist) == 1: return mylist[0]
         randomInt = random.randint(0,len(mylist) -1)
         return mylist[randomInt]
     def sampleN(self,mylist, n):
-        """
-        Params:
-            mylist - list
-            n - number of random items to sample with replacement
-        returns: n random items from mylist
-        """
         return [self.sample(mylist) for i in range(n)]
     def getAction(self,pose):
         """
@@ -268,36 +211,17 @@ class Agent:
             e(g('action'))
             return action
     def getNewState(self,observation):
-        """
-        Params: 
-            observation - input observation from environment
-        returns: past four observations as an array
-        """
-        stateCopy = self.currentState.copy()
-        stateCopy[:,:,1:4] = self.currentState[:,:,1:4]
-        stateCopy[:,:,0] = observation
-        return stateCopy
+
+        newState = self.currentState.copy()
+        newState[:,:,:3] = newState[:,:,1:4]
+        newState[:,:,3] = observation
+        e(g('newState.shape'))
+        return newState
     def oneHotActions(self,action):
-        """
-        Params:
-            action - integer value to be one hot encoded 
-        returns: array of zeros where array at action is 1
-        """
         actionArray = np.zeros(self.numActions)
         actionArray[action] = 1
         return actionArray
     def updateExp(self,currentState,action, reward,observation, terminal,expBool):
-        """
-        Params: 
-            currentState - 84 by 84 by 4 current stateCopy
-            action - integer value representing action taken from currentState
-            reward - reward received after taking action from currentState
-            observation - observation received from environment
-            terminal - boolean representing whether current state is terminal
-            expBool - boolean that's true if experience should be being updated
-        returns - most recent exp
-        """
-        
         newState = self.getNewState(observation)
         action = self.oneHotActions(action)
         self.experience.append((currentState,action,reward,newState,terminal))
@@ -307,22 +231,10 @@ class Agent:
         self.currentState = newState 
         return recentExp
     def getGrayScale(self,image):
-        """
-        Params:
-            image - image array rgb valued
-        returns grayscale image
-        """
         imPil = Image.fromarray(image)
         imPil = ImageOps.grayscale(imPil)
         return np.asarray(imPil)
     def preprocess(self,image, scale = 0.525, grayScale = True,binaryThresh = True):
-        """
-        Params: 
-            image - rgb image from environment
-            scale - scale to apply to each image
-            grayscale - boolean deciding whether to change image to grayscale
-            binaryThresh - unused
-        """
         #imPil = Image.fromarray(image)
         img = image
         img = np.reshape(img,(210,160,3)).astype(np.uint8)
@@ -342,24 +254,11 @@ class Agent:
         imArray = imArray[18:102,:]
         return imArray.astype(np.uint8)
     def getBatch(self):
-        """
-        returns batch
-        """
         return self.sampleN(self.experience, self.batch_size)
     def showImageArray(self,image):
-        """
-        Params: 
-            image - image array
-        output: shows image array
-        """
         im = Image.fromarray(image)
         im.show()
     def clip_reward(self,reward):
-        """
-        Params: 
-            reward - float reward
-        returns: clipped reward
-        """
         if reward > 0: 
             return 1
         elif reward == 0: 
