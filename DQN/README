@@ -25,6 +25,6 @@ If you want to run the agent with a pretrained model, use the following:
 python DQNAgent.py --visual True --testPhase True --timeToStart 0 --epsilon 0 --checkpointName checkpoints/saved_dqn-1830000
 
 If you want to run the agent with the default parameters, then simply run:
-python DQNAgent.py
+python DQNAgent.py --resetModel True --resetExp True --timeToStart 100000
 
 You may examine the parameters in DQNAgent.py to adjust the model.
