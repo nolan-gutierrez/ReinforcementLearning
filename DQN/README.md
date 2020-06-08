@@ -1,6 +1,4 @@
-Nolan Gutierrez
-05/15/2020
-
+## Simple DQN
 As you will see with this repository, this is one of the most simple implementations
 of DQN there is online. 
 
