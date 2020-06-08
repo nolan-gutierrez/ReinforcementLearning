@@ -11,7 +11,7 @@ to use the agent, it is recommended to install Anaconda 3 on Ubuntu 16.04 althou
 any Ubuntu version should work. The deep learning API used was tensorflow v2, 
 and the required libraries are gym, matplotlib, pillow, opencv, ffmpeg, and 
 pybullet-gym. The anaconda environment should be made as follows:
-
+```
 conda create -y -n gym2 pip python=3.7
 conda activate gym2
 conda install -y tensorflow matplotlib
@@ -23,12 +23,14 @@ To install pybulletgym:
 git clone https://github.com/benelot/pybullet-gym.git
 cd pybullet-gym
 pip install -e .
-
+```
 If you want to run the agent with a pretrained model, use the following:
+```
 python DQNAgent.py --visual True --testPhase True --timeToStart 0 --epsilon 0 
-
+```
 If you want to run the agent with the default parameters, then simply run:
+```
 python DQNAgent.py --resetModel True --resetExp True --timeToStart 100000
-
+```
 You may examine the parameters in DQNAgent.py to adjust the model.
 
