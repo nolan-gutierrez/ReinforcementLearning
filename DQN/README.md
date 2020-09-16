@@ -14,6 +14,24 @@ conda create -y -n gym2 pip python=3.7
 conda activate gym2
 conda install -y tensorflow matplotlib
 conda install -c conda-forge opencv
+conda install cython
+##################################
+for Windows: 
+Install Visual Studio 2017
+conda install pystan
+
+pip install Box2D
+conda install git
+pip install git+https://github.com/Kojoley/atari-py.git
+
+conda install swig
+pip install Box2D
+pip install gym[all]
+
+conda install cython
+pip install pyglet==1.2.4
+pip install gym[box2d]
+#################################
 pip install pillow ffmpeg gym
 pip install gym[all] 
 pip install gym[atari]
