@@ -18,17 +18,17 @@ conda install cython
 ##################################
 for Windows: 
 Install Visual Studio 2017
-conda install pystan
+conda install -y pystan
 
-pip install Box2D
-conda install git
+pip install  Box2D
+conda install -y  git
 pip install git+https://github.com/Kojoley/atari-py.git
 
-conda install swig
+conda install -y  swig
 pip install Box2D
 pip install gym[all]
 
-conda install cython
+conda install -y cython
 pip install pyglet==1.2.4
 pip install gym[box2d]
 #################################
