@@ -13,8 +13,8 @@ pybullet-gym. The anaconda environment should be made as follows:
 conda create -y -n gym2 pip python=3.7
 conda activate gym2
 conda install -y tensorflow matplotlib
-conda install -c conda-forge opencv
-conda install cython
+conda install -y -c conda-forge opencv
+conda install -y cython
 ##################################
 for Windows: 
 Install Visual Studio 2017
@@ -36,9 +36,8 @@ pip install pillow ffmpeg gym
 pip install gym[all] 
 pip install gym[atari]
 To install pybulletgym: 
-git clone https://github.com/benelot/pybullet-gym.git
-cd pybullet-gym
-pip install -e .
+pip install git+https://github.com/benelot/pybullet-gym.git
+
 ```
 If you want to run the agent with a pretrained model, use the following:
 ```
